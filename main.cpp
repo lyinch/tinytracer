@@ -7,7 +7,8 @@ struct Sphere{
     float radius;
 
     Sphere(const Vec3f &c, const float &r): center(c), radius(r){};
-
+#if 0
+    // Geometric solution
     bool ray_intersect(const Vec3f &orig, const Vec3f &dir, float &t0) const{
         Vec3f L = center - orig;
         float tca = L*dir;
@@ -20,6 +21,40 @@ struct Sphere{
         if (t0 < 0) return false;
         return true;
     }
+#else
+    // Analytic solution
+    bool ray_intersect(const Vec3f &orig,  const Vec3f &dir, float &t0) const{
+        Vec3f L = orig - center;
+        float a = dir*dir;
+        float b =  2*(dir*L);
+        float c = L*L - radius*radius;
+        //std::cout << L << "--- " << radius << std::endl;
+        //std::cout << c << std::endl;
+        // solve quadratic equation: https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection
+
+        float discr = b*b-4*a*c;
+        if (discr < 0) return false;
+        float t1;
+        if(discr == 0){
+            t0 = t1 = -0.5f*b/a;
+        }
+        else{
+            float q = (b > 0) ?
+                      -0.5f * (b + sqrtf(discr)) :
+                      -0.5f * (b - sqrtf(discr));
+            t0 = q / a;
+            t1 = c / q;
+        }
+        if (t0 > t1) std::swap(t0, t1);
+
+        if (t0 < 0) {
+            t0 = t1; // if t0 is negative, let's use t1 instead
+            if (t0 < 0) return false; // both t0 and t1 are negative
+        }
+        return true;
+
+    }
+#endif
 };
 
 Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const Sphere &sphere) {
