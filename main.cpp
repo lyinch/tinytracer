@@ -2,11 +2,19 @@
 #include <fstream>
 #include "geometry.h"
 
+
+struct Material {
+    Material(const Vec3f &color) : diffuse_color(color) {}
+    Material() : diffuse_color() {}
+    Vec3f diffuse_color;
+};
+
 struct Sphere{
     Vec3f center;
     float radius;
+    Material material;
 
-    Sphere(const Vec3f &c, const float &r): center(c), radius(r){};
+    Sphere(const Vec3f &c, const float &r,const Material &m): center(c), radius(r), material(m){};
 #if 0
     // Geometric solution
     bool ray_intersect(const Vec3f &orig, const Vec3f &dir, float &t0) const{
@@ -57,7 +65,7 @@ struct Sphere{
 #endif
 };
 
-bool scene_intersect(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &spheres, Vec3f &hit, Vec3f &N) {
+bool scene_intersect(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &spheres, Vec3f &hit, Vec3f &N, Material &material) {
     float spheres_dist = std::numeric_limits<float>::max();
     for(auto sphere:spheres){
         float dist_i;
@@ -65,6 +73,7 @@ bool scene_intersect(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphe
             spheres_dist = dist_i;
             hit = orig + dir*dist_i;
             N = (hit-sphere.center).normalize();
+            material = sphere.material;
         }
     }
     return spheres_dist<1000;
@@ -73,10 +82,12 @@ bool scene_intersect(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphe
 
 Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir,const std::vector<Sphere> &spheres) {
     Vec3f point, N;
-    if(!scene_intersect(orig,dir,spheres,point,N)){
+    Material material;
+
+    if(!scene_intersect(orig,dir,spheres,point,N, material)){
         return Vec3f(0.2, 0.7, 0.8); // background color
     }
-    return Vec3f(0.4, 0.4, 0.3);
+    return material.diffuse_color;
 }
 
 void render(const std::vector<Sphere> &spheres){
@@ -106,12 +117,14 @@ void render(const std::vector<Sphere> &spheres){
 
 
 int main() {
+    Material ivory(Vec3f(0.4, 0.4, 0.3));
+    Material red_rubber(Vec3f(0.3, 0.1, 0.1));
 
     std::vector<Sphere> spheres;
-    spheres.emplace_back(Vec3f(-3,    0,   -16), 2);
-    spheres.emplace_back(Vec3f(-1.f, -1.f, -12), 2);
-    spheres.emplace_back(Vec3f( 1.5, -0.f, -18), 3);
-    spheres.emplace_back(Vec3f( 7,    5,   -18), 4);
+    spheres.emplace_back(Vec3f(-3,    0,   -16), 2,ivory);
+    spheres.emplace_back(Vec3f(-1.f, -1.f, -12), 2,red_rubber);
+    spheres.emplace_back(Vec3f( 1.5, -0.f, -18), 3,red_rubber);
+    spheres.emplace_back(Vec3f( 7,    5,   -18), 4,ivory);
     render(spheres);
 
     return 0;
