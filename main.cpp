@@ -57,16 +57,29 @@ struct Sphere{
 #endif
 };
 
-Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir, const Sphere &sphere) {
-    float sphere_dist = std::numeric_limits<float>::max();
-    if (!sphere.ray_intersect(orig, dir, sphere_dist)) {
+bool scene_intersect(const Vec3f &orig, const Vec3f &dir, const std::vector<Sphere> &spheres, Vec3f &hit, Vec3f &N) {
+    float spheres_dist = std::numeric_limits<float>::max();
+    for(auto sphere:spheres){
+        float dist_i;
+        if(sphere.ray_intersect(orig,dir,dist_i) && dist_i < spheres_dist){
+            spheres_dist = dist_i;
+            hit = orig + dir*dist_i;
+            N = (hit-sphere.center).normalize();
+        }
+    }
+    return spheres_dist<1000;
+
+}
+
+Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir,const std::vector<Sphere> &spheres) {
+    Vec3f point, N;
+    if(!scene_intersect(orig,dir,spheres,point,N)){
         return Vec3f(0.2, 0.7, 0.8); // background color
     }
-
     return Vec3f(0.4, 0.4, 0.3);
 }
 
-void render(const Sphere &sphere){
+void render(const std::vector<Sphere> &spheres){
     const int width = 1024;
     const int height = 768;
     const int fov      = M_PI/2.;
@@ -77,7 +90,7 @@ void render(const Sphere &sphere){
             float x =  (2*(i + 0.5)/(float)width  - 1)*tan(fov/2.)*width/(float)height;
             float y = -(2*(j + 0.5)/(float)height - 1)*tan(fov/2.);
             Vec3f dir = Vec3f(x, y, -1).normalize();
-            framebuffer[i+j*width] = cast_ray(Vec3f(0,0,0), dir, sphere);
+            framebuffer[i+j*width] = cast_ray(Vec3f(0,0,0), dir, spheres);
         }
     }
 
@@ -94,8 +107,12 @@ void render(const Sphere &sphere){
 
 int main() {
 
-    Sphere sphere(Vec3f(-3, 0, -16), 2);
-    render(sphere);
+    std::vector<Sphere> spheres;
+    spheres.emplace_back(Vec3f(-3,    0,   -16), 2);
+    spheres.emplace_back(Vec3f(-1.f, -1.f, -12), 2);
+    spheres.emplace_back(Vec3f( 1.5, -0.f, -18), 3);
+    spheres.emplace_back(Vec3f( 7,    5,   -18), 4);
+    render(spheres);
 
     return 0;
 }
