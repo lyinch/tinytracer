@@ -104,6 +104,15 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir,const std::vector<Sphere> &sp
 
     for(auto light:lights){
         Vec3f light_dir = (light.position-point).normalize();
+
+        float light_distance = (light.position - point).norm();
+        Vec3f shadow_orig = light_dir*N < 0 ? point - N*1e-3 : point + N*1e-3; // create the origin for the shadow ray. Move the ray a bit to not intersect with the current sphere
+        Vec3f shadow_pt, shadow_N;
+        Material tmpmaterial;
+
+        if (scene_intersect(shadow_orig, light_dir, spheres, shadow_pt, shadow_N, tmpmaterial) && (shadow_pt-shadow_orig).norm() < light_distance)
+            continue;
+
         diffuse_light_intensity += light.intensity*std::max(0.f,light_dir*N);
         specular_light_intensity += powf(std::max(0.f, -reflect(-light_dir, N)*dir), material.specular_exponent)*light.intensity;
     }
@@ -114,13 +123,13 @@ Vec3f cast_ray(const Vec3f &orig, const Vec3f &dir,const std::vector<Sphere> &sp
 void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights){
     const int width = 1024;
     const int height = 768;
-    const int fov      = M_PI/2.;
+    const auto fov      = static_cast<const float>(M_PI / 2.f);
 
     std::vector<Vec3f> framebuffer(width*height);
     for(size_t j = 0; j < height; j++){
         for(size_t i = 0; i < width; i++){
-            float x =  (2*(i + 0.5)/(float)width  - 1)*tan(fov/2.)*width/(float)height;
-            float y = -(2*(j + 0.5)/(float)height - 1)*tan(fov/2.);
+            float x = static_cast<float>((2 * (i + 0.5) / (float)width - 1) * tan(fov / 2.) * width / (float)height);
+            float y = static_cast<float>(-(2 * (j + 0.5) / (float)height - 1) * tan(fov / 2.));
             Vec3f dir = Vec3f(x, y, -1).normalize();
             framebuffer[i+j*width] = cast_ray(Vec3f(0,0,0), dir, spheres, lights);
         }
@@ -130,6 +139,7 @@ void render(const std::vector<Sphere> &spheres, const std::vector<Light> &lights
     ofs.open("./out.ppm");
     ofs << "P6\n" << width << " " << height << "\n255\n";
     for (int i = 0; i < height * width; ++i) {
+        //normalize value
         Vec3f &c = framebuffer[i];
         float max = std::max(c[0], std::max(c[1], c[2]));
         if (max>1) c = c*(1./max);
